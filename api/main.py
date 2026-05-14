@@ -595,3 +595,69 @@ async def diagram_types(user: AuthenticatedUser = Depends(get_current_user)):
         k: {"description": v, "entity_required": k in ENTITY_REQUIRED}
         for k, v in DIAGRAM_TYPES.items()
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CHANGE IMPACT RADAR (D-1)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ImpactRequest(BaseModel):
+    entity:      str = Field(..., description="Name of the app, capability, or data asset being changed")
+    change_type: str = Field("Decommission", description=(
+        "Proposed change: Decommission | Re-platform | Major version upgrade | "
+        "Owner change | Data classification change | Integration removal"
+    ))
+
+
+@app.post("/v1/impact/analyze", tags=["Change Impact"])
+async def analyze_impact(
+    req: ImpactRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Compute the full blast radius of a proposed change to an application,
+    capability, or data asset.
+
+    Runs 6 parallel SPARQL traversals:
+    - Direct dependent applications
+    - Indirect (depth-2) dependent applications
+    - Business capability gaps created
+    - Restricted/Confidential data assets at risk
+    - AI agents affected
+    - Tech owners to notify
+
+    Returns impact rings, risk level, narrative, and mitigation checklist.
+    """
+    _safe_filter_param(req.entity, "entity")
+    from nexus.core.impact_analyzer import analyze_change_impact
+    from nexus.audit.logger import log_agent_action
+
+    result = analyze_change_impact(
+        entity=req.entity,
+        change_type=req.change_type,
+        user_role=user.user_role,
+    )
+    log_agent_action(
+        agent_id="impact-analyzer", action="change_impact",
+        entity_uri=req.entity, permitted=True,
+        policy="impact-policy", classification="Internal",
+        domain=req.entity,
+    )
+    return {
+        "entity":         result.entity,
+        "change_type":    result.change_type,
+        "risk_level":     result.risk_level,
+        "total_affected": result.total_affected,
+        "narrative":      result.narrative,
+        "mitigations":    result.mitigations,
+        "rings": [
+            {
+                "label":    r.label,
+                "icon":     r.icon,
+                "count":    r.count,
+                "entities": r.entities,
+            }
+            for r in result.rings
+        ],
+        "error": result.error,
+    }

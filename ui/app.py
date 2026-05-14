@@ -308,7 +308,7 @@ st.markdown(
 )
 
 # ── Main tabs ─────────────────────────────────────────────────────────
-tab_chat, tab_guided_sa, tab_sa, tab_data, tab_portfolio, tab_sa_health, tab_diagram, tab_audit = st.tabs([
+tab_chat, tab_guided_sa, tab_sa, tab_data, tab_portfolio, tab_sa_health, tab_diagram, tab_impact, tab_audit = st.tabs([
     "💬  Knowledge Graph Chat",
     "🧭  Guided SA Advisor",
     "🏛  Freeform SA Diagram",
@@ -316,6 +316,7 @@ tab_chat, tab_guided_sa, tab_sa, tab_data, tab_portfolio, tab_sa_health, tab_dia
     "📊  Portfolio Intelligence",
     "🏥  SA Health",
     "🗺️  Architecture Diagrams",
+    "💥  Change Impact",
     "🔍  Audit",
 ])
 
@@ -1119,7 +1120,21 @@ with tab_diagram:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 8 — AUDIT & OBSERVABILITY
+# TAB 8 — CHANGE IMPACT RADAR
+# ═══════════════════════════════════════════════════════════════════════
+with tab_impact:
+    try:
+        from nexus.ui.impact_tab import render_impact_tab
+        render_impact_tab(
+            connected=st.session_state.get("connected", False),
+            user_role=st.session_state.get("user_role", "analyst"),
+        )
+    except Exception as _exc:
+        st.error(f"Change Impact tab failed to load: {_exc}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TAB 9 — AUDIT & OBSERVABILITY
 # ═══════════════════════════════════════════════════════════════════════
 with tab_audit:
     try:
