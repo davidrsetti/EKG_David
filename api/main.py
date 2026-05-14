@@ -58,7 +58,7 @@ app.add_middleware(
 # ══════════════════════════════════════════════════════════════════════════════
 
 class QueryRequest(BaseModel):
-    question:              str  = Field(..., description="Natural language question")
+    question:              str  = Field(..., min_length=3, max_length=2000, description="Natural language question")
     sparql:                str  = Field("", description="Raw SPARQL (skip NL translation if provided)")
     use_virtual_graph:     bool = Field(False)
     session_id:            str  = Field("")
@@ -295,15 +295,15 @@ async def graph_health(user: AuthenticatedUser = Depends(require_role("admin", "
     metrics = {}
     checks  = {
         "total_triples":       "SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }",
-        "total_people":        "SELECT (COUNT(*) AS ?count) WHERE { ?s a hr:Person }",
+        "total_people":        "SELECT (COUNT(*) AS ?count) WHERE { ?s a hr:User }",
         "total_apps":          "SELECT (COUNT(*) AS ?count) WHERE { ?s a app:Application }",
         "total_data_assets":   "SELECT (COUNT(*) AS ?count) WHERE { ?s a data:DataAsset }",
-        "total_agents":        "SELECT (COUNT(*) AS ?count) WHERE { ?s a agent:AIAgent }",
+        "total_agents":        "SELECT (COUNT(*) AS ?count) WHERE { ?s a ai:Agent }",
         "total_capabilities":  "SELECT (COUNT(*) AS ?count) WHERE { ?s a ea:BusinessCapability }",
-        "open_findings":       "SELECT (COUNT(*) AS ?count) WHERE { ?s a agent:AgentFinding ; agent:status 'Open' }",
+        "open_findings":       "SELECT (COUNT(*) AS ?count) WHERE { ?s a nexus:AgentFinding ; nexus:findingStatus 'Open' }",
         "orphaned_apps":       "SELECT (COUNT(*) AS ?count) WHERE { ?s a app:Application . FILTER NOT EXISTS { ?s app:techOwner ?o } }",
         "unclassified_assets": "SELECT (COUNT(*) AS ?count) WHERE { ?s a data:DataAsset . FILTER NOT EXISTS { ?s data:classification ?c } }",
-        "capability_gaps":     "SELECT (COUNT(*) AS ?count) WHERE { ?s a ea:BusinessCapability . FILTER NOT EXISTS { ?a ea:realisedBy ?s } }",
+        "capability_gaps":     "SELECT (COUNT(*) AS ?count) WHERE { ?s a ea:BusinessCapability . FILTER NOT EXISTS { ?a ea:enablesBusinessCapability ?s } }",
     }
     for key, q in checks.items():
         try:

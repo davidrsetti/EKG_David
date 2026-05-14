@@ -129,14 +129,14 @@ def get_context(entity_name: str, requesting_agent: str = "") -> ContextBundle:
     try:
         find_q = f"""
         SELECT ?finding ?findingLabel ?severity ?status ?foundBy ?foundByLabel ?foundAt WHERE {{
-            ?finding a agent:AgentFinding ;
-                     agent:affects <{entity_uri}> ;
-                     agent:status  ?status .
+            ?finding a nexus:AgentFinding ;
+                     nexus:affects       <{entity_uri}> ;
+                     nexus:findingStatus ?status .
             FILTER(?status != "Resolved")
             OPTIONAL {{ ?finding rdfs:label      ?findingLabel }}
-            OPTIONAL {{ ?finding agent:severity  ?severity     }}
-            OPTIONAL {{ ?finding agent:foundAt   ?foundAt      }}
-            OPTIONAL {{ ?finding agent:foundBy   ?foundBy .
+            OPTIONAL {{ ?finding nexus:severity  ?severity     }}
+            OPTIONAL {{ ?finding nexus:foundAt   ?foundAt      }}
+            OPTIONAL {{ ?finding nexus:foundBy   ?foundBy .
                         ?foundBy rdfs:label      ?foundByLabel }}
         }} ORDER BY DESC(?foundAt) LIMIT 10
         """

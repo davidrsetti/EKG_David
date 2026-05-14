@@ -346,9 +346,9 @@ def run_apm_agent(focus_domain: str = "", user_role: str = "analyst") -> APMPort
         OPTIONAL {{ ?app app:lifecycle    ?lifecycle      }}
         OPTIONAL {{ ?app app:platform     ?platform       }}
         OPTIONAL {{ ?app ea:domain        ?domain         }}
-        OPTIONAL {{ ?app ea:strategicIntent ?strategicIntent }}
-        OPTIONAL {{ ?app ea:realisedBy    ?cap            }}
-        OPTIONAL {{ ?app app:dependsOn    ?dep            }}
+        OPTIONAL {{ ?app ea:strategicIntent          ?strategicIntent }}
+        OPTIONAL {{ ?app ea:enablesBusinessCapability ?cap            }}
+        OPTIONAL {{ ?app app:dependsOn               ?dep            }}
         OPTIONAL {{ ?consumer app:dependsOn ?app          }}
         {domain_filter}
     }} GROUP BY ?app ?appLabel ?owner ?ownerLabel ?lifecycle ?platform ?domain ?strategicIntent
@@ -358,13 +358,13 @@ def run_apm_agent(focus_domain: str = "", user_role: str = "analyst") -> APMPort
     # ── Q2: Open findings per application ─────────────────────────────────────
     findings_q = f"""
     SELECT ?app ?appLabel ?finding ?severity ?status WHERE {{
-        ?finding a agent:AgentFinding ;
-                 agent:affects ?app ;
-                 agent:status  ?status .
+        ?finding a nexus:AgentFinding ;
+                 nexus:affects       ?app ;
+                 nexus:findingStatus ?status .
         FILTER(?status != "Resolved")
         ?app a app:Application .
-        OPTIONAL {{ ?app     rdfs:label     ?appLabel }}
-        OPTIONAL {{ ?finding agent:severity ?severity }}
+        OPTIONAL {{ ?app     rdfs:label      ?appLabel }}
+        OPTIONAL {{ ?finding nexus:severity  ?severity }}
         {domain_filter}
     }} LIMIT 500
     """
@@ -536,15 +536,15 @@ def get_app_detail(app_name: str, user_role: str = "analyst") -> dict:
         OPTIONAL {{ ?app app:platform     ?platform       }}
         OPTIONAL {{ ?app app:vendor       ?vendor         }}
         OPTIONAL {{ ?app ea:domain        ?domain         }}
-        OPTIONAL {{ ?app ea:strategicIntent ?strategicIntent }}
-        OPTIONAL {{ ?app app:hostingEnv   ?hostingEnv     }}
-        OPTIONAL {{ ?app ea:realisedBy    ?cap            }}
-        OPTIONAL {{ ?app app:dependsOn    ?dep            }}
+        OPTIONAL {{ ?app ea:strategicIntent          ?strategicIntent }}
+        OPTIONAL {{ ?app app:hostingEnv              ?hostingEnv     }}
+        OPTIONAL {{ ?app ea:enablesBusinessCapability ?cap            }}
+        OPTIONAL {{ ?app app:dependsOn               ?dep            }}
         OPTIONAL {{ ?consumer app:dependsOn ?app          }}
         OPTIONAL {{
-            ?finding a agent:AgentFinding ;
-                     agent:affects ?app ;
-                     agent:status "Open"
+            ?finding a nexus:AgentFinding ;
+                     nexus:affects       ?app ;
+                     nexus:findingStatus "Open"
         }}
     }} GROUP BY ?app ?appLabel ?owner ?ownerLabel ?lifecycle ?platform
                ?vendor ?domain ?strategicIntent ?hostingEnv

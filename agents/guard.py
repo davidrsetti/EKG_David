@@ -209,13 +209,18 @@ def build_security_filter(
             f"FILTER(!BOUND(?classification) || ?classification IN ({vals}))"
         )
 
-    # Additional HR scope filter
-    if hr_scope == "own-dept" and user_department:
-        dept_filter = (
-            f'\n  OPTIONAL {{ ?person hr:department ?dept }}'
-            f'\n  FILTER(!BOUND(?dept) || STR(?dept) = "nexus.enterprise.com/hr#{user_department}")'
-        )
-        data_filter = (data_filter + dept_filter).strip()
+    # Additional HR scope filter — viewers without a department see nothing
+    if hr_scope == "own-dept":
+        if user_department:
+            dept_filter = (
+                f'\n  OPTIONAL {{ ?person hr:department ?dept }}'
+                f'\n  FILTER(!BOUND(?dept) || STR(?dept) = "https://nexus.platform/ops#hr/{user_department}")'
+            )
+            data_filter = (data_filter + dept_filter).strip()
+        else:
+            # No department set: block all HR data for viewer role
+            dept_filter = '\n  FILTER(false)'
+            data_filter = (data_filter + dept_filter).strip()
 
     return SecurityFilter(
         allowed_classifications = clearance,

@@ -9,6 +9,7 @@ from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=256)
 def get_agent_profile(agent_id: str) -> dict | None:
     """
     Fetch a registered AI agent's profile from the NEXUS graph.
@@ -19,18 +20,18 @@ def get_agent_profile(agent_id: str) -> dict | None:
 
     q = f"""
     SELECT ?label ?platform ?vendor ?riskTier ?clearanceLevel ?policy ?ownedBy ?reviewDue WHERE {{
-        ?agent a agent:AIAgent ;
+        ?agent a ai:Agent ;
                rdfs:label ?label .
         FILTER(CONTAINS(LCASE(STR(?agent)), "{agent_id.lower()}") ||
                CONTAINS(LCASE(STR(?label)), "{agent_id.lower()}"))
-        OPTIONAL {{ ?agent agent:platform   ?platform   }}
-        OPTIONAL {{ ?agent agent:vendor     ?vendor     }}
-        OPTIONAL {{ ?agent agent:riskTier   ?riskTier   }}
-        OPTIONAL {{ ?agent sec:clearance    ?clearanceLevel }}
-        OPTIONAL {{ ?agent agent:policy     ?policy     }}
-        OPTIONAL {{ ?agent agent:ownedBy    ?owner .
-                    ?owner rdfs:label       ?ownedBy    }}
-        OPTIONAL {{ ?agent agent:reviewDue  ?reviewDue  }}
+        OPTIONAL {{ ?agent ai:platform   ?platform   }}
+        OPTIONAL {{ ?agent ai:vendor     ?vendor     }}
+        OPTIONAL {{ ?agent ai:riskTier   ?riskTier   }}
+        OPTIONAL {{ ?agent sec:clearance ?clearanceLevel }}
+        OPTIONAL {{ ?agent ai:policy     ?policy     }}
+        OPTIONAL {{ ?agent ai:ownedBy    ?owner .
+                    ?owner rdfs:label    ?ownedBy    }}
+        OPTIONAL {{ ?agent ai:reviewDue  ?reviewDue  }}
     }} LIMIT 1
     """
     try:
@@ -68,14 +69,14 @@ def list_agents(domain: str = "", risk_tier: str = "") -> list[dict]:
 
     q = f"""
     SELECT ?agent ?label ?platform ?riskTier ?ownedBy ?reviewDue WHERE {{
-        ?agent a agent:AIAgent ;
+        ?agent a ai:Agent ;
                rdfs:label ?label .
-        OPTIONAL {{ ?agent agent:platform  ?platform  }}
-        OPTIONAL {{ ?agent agent:riskTier  ?riskTier  }}
-        OPTIONAL {{ ?agent agent:scopedTo  ?domain    }}
-        OPTIONAL {{ ?agent agent:ownedBy   ?owner .
-                    ?owner rdfs:label      ?ownedBy   }}
-        OPTIONAL {{ ?agent agent:reviewDue ?reviewDue }}
+        OPTIONAL {{ ?agent ai:platform  ?platform  }}
+        OPTIONAL {{ ?agent ai:riskTier  ?riskTier  }}
+        OPTIONAL {{ ?agent ai:scopedTo  ?domain    }}
+        OPTIONAL {{ ?agent ai:ownedBy   ?owner .
+                    ?owner rdfs:label   ?ownedBy   }}
+        OPTIONAL {{ ?agent ai:reviewDue ?reviewDue }}
         {filter_block}
     }} ORDER BY ?label LIMIT 100
     """
@@ -94,14 +95,14 @@ def get_agent_tools(agent_id: str) -> list[dict]:
 
     q = f"""
     SELECT ?tool ?toolLabel ?endpoint ?rateLimit ?requiredRole WHERE {{
-        ?agent a agent:AIAgent ;
+        ?agent a ai:Agent ;
                rdfs:label ?agentLabel .
         FILTER(CONTAINS(LCASE(STR(?agentLabel)), "{agent_id.lower()}"))
-        ?agent agent:hasTool ?tool .
-        OPTIONAL {{ ?tool rdfs:label          ?toolLabel    }}
-        OPTIONAL {{ ?tool agent:endpoint      ?endpoint     }}
-        OPTIONAL {{ ?tool agent:rateLimit     ?rateLimit    }}
-        OPTIONAL {{ ?tool agent:requiresRole  ?requiredRole }}
+        ?agent ai:hasTool ?tool .
+        OPTIONAL {{ ?tool rdfs:label        ?toolLabel    }}
+        OPTIONAL {{ ?tool ai:endpoint       ?endpoint     }}
+        OPTIONAL {{ ?tool ai:rateLimit      ?rateLimit    }}
+        OPTIONAL {{ ?tool ai:requiresRole   ?requiredRole }}
     }} ORDER BY ?toolLabel
     """
     try:

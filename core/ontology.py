@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass
 
@@ -40,7 +41,8 @@ class OntologyContext:
         return (time.time() - self.fetched_at) > _CACHE_TTL_SECONDS
 
 
-_ctx = OntologyContext()
+_ctx  = OntologyContext()
+_lock = threading.Lock()
 
 
 def _uri_filter(var_name: str) -> str:
@@ -141,10 +143,13 @@ def _fetch() -> None:
 
 def get_ontology() -> OntologyContext:
     if _ctx.is_stale:
-        _fetch()
+        with _lock:
+            if _ctx.is_stale:  # double-checked locking
+                _fetch()
     return _ctx
 
 
 def invalidate_ontology_cache() -> None:
-    _ctx.fetched_at = 0.0
+    with _lock:
+        _ctx.fetched_at = 0.0
     logger.info("Ontology cache invalidated — will re-fetch on next access.")

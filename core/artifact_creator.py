@@ -107,8 +107,12 @@ def _db():
 
 
 def _safe_id(s: str) -> str:
-    """Convert a label to a safe DOT/Mermaid node ID."""
-    return "".join(c if c.isalnum() else "_" for c in s)[:40]
+    """Convert a label to a safe DOT/Mermaid node ID (alphanumeric + underscore only)."""
+    cleaned = "".join(c if c.isalnum() or c == "_" else "_" for c in str(s))
+    # Ensure it starts with a letter or underscore (required by DOT/Mermaid)
+    if cleaned and cleaned[0].isdigit():
+        cleaned = "_" + cleaned
+    return cleaned[:40] or "_unknown"
 
 
 def _trunc(s: str, n: int = 25) -> str:
@@ -282,7 +286,7 @@ def _capability_map(entity: str = "", depth: int = 2, fmt: str = "mermaid",
         OPTIONAL {{ ?cap ea:domain   ?domain   }}
         OPTIONAL {{
             ?app a app:Application ;
-                 ea:realisedBy ?cap .
+                 ea:enablesBusinessCapability ?cap .
             OPTIONAL {{ ?app rdfs:label   ?appLabel   }}
             OPTIONAL {{ ?app app:lifecycle ?lifecycle  }}
         }}
@@ -438,14 +442,14 @@ def _agent_ecosystem(entity: str = "", depth: int = 1, fmt: str = "mermaid",
 
     q = f"""
     SELECT ?agent ?agentLabel ?riskTier ?platform ?tool ?toolLabel ?asset ?assetLabel ?classification WHERE {{
-        ?agent a agent:AIAgent .
-        OPTIONAL {{ ?agent rdfs:label      ?agentLabel }}
-        OPTIONAL {{ ?agent agent:riskTier  ?riskTier   }}
-        OPTIONAL {{ ?agent agent:platform  ?platform   }}
-        OPTIONAL {{ ?agent agent:hasTool   ?tool .
-                    ?tool  rdfs:label      ?toolLabel  }}
+        ?agent a ai:Agent .
+        OPTIONAL {{ ?agent rdfs:label    ?agentLabel }}
+        OPTIONAL {{ ?agent ai:riskTier  ?riskTier   }}
+        OPTIONAL {{ ?agent ai:platform  ?platform   }}
+        OPTIONAL {{ ?agent ai:hasTool   ?tool .
+                    ?tool  rdfs:label   ?toolLabel  }}
         OPTIONAL {{
-            ?agent (agent:reads | agent:writes | agent:accesses) ?asset .
+            ?agent (ai:reads | ai:writes | ai:accesses) ?asset .
             OPTIONAL {{ ?asset rdfs:label          ?assetLabel     }}
             OPTIONAL {{ ?asset data:classification ?classification }}
         }}
@@ -534,11 +538,11 @@ def _c4_context(entity: str = "", depth: int = 1, fmt: str = "mermaid",
         ?app a app:Application .
         OPTIONAL {{ ?app rdfs:label ?appLabel }}
         FILTER(CONTAINS(LCASE(STR(?appLabel)), "{entity.lower()}"))
-        OPTIONAL {{ ?app app:techOwner  ?owner .     ?owner rdfs:label ?ownerLabel }}
-        OPTIONAL {{ ?app app:dependsOn  ?dep   .     ?dep   rdfs:label ?depLabel   }}
-        OPTIONAL {{ ?app ea:realisedBy  ?capability . ?capability rdfs:label ?capLabel }}
+        OPTIONAL {{ ?app app:techOwner              ?owner .     ?owner rdfs:label ?ownerLabel }}
+        OPTIONAL {{ ?app app:dependsOn              ?dep   .     ?dep   rdfs:label ?depLabel   }}
+        OPTIONAL {{ ?app ea:enablesBusinessCapability ?capability . ?capability rdfs:label ?capLabel }}
         OPTIONAL {{
-            ?user a hr:Person ;
+            ?user a hr:User ;
                   sec:hasAccess ?app .
             OPTIONAL {{ ?user rdfs:label ?userLabel }}
         }}
@@ -630,7 +634,7 @@ def _org_ownership(entity: str = "", depth: int = 2, fmt: str = "dot",
 
     q = f"""
     SELECT ?owner ?ownerLabel ?dept ?deptLabel ?app ?appLabel ?asset ?assetLabel WHERE {{
-        ?owner a hr:Person .
+        ?owner a hr:User .
         OPTIONAL {{ ?owner rdfs:label    ?ownerLabel }}
         OPTIONAL {{ ?owner hr:department ?dept .
                     ?dept  rdfs:label    ?deptLabel  }}

@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
 from openai import OpenAI
@@ -142,7 +143,7 @@ def run_sa_advisor(focus_domain: str = "", user_role: str = "analyst") -> SAAdvi
         OPTIONAL {{ ?cap ea:domain    ?domain   }}
         OPTIONAL {{
             ?app a app:Application ;
-                 ea:realisedBy ?cap .
+                 ea:enablesBusinessCapability ?cap .
             OPTIONAL {{ ?app rdfs:label   ?appLabel   }}
             OPTIONAL {{ ?app app:lifecycle ?lifecycle  }}
         }}
@@ -201,10 +202,10 @@ def run_sa_advisor(focus_domain: str = "", user_role: str = "analyst") -> SAAdvi
     gap_q = f"""
     SELECT ?cap ?capLabel ?domain ?strategicIntent WHERE {{
         ?cap a ea:BusinessCapability .
-        OPTIONAL {{ ?cap rdfs:label        ?capLabel       }}
-        OPTIONAL {{ ?cap ea:domain         ?domain         }}
+        OPTIONAL {{ ?cap rdfs:label         ?capLabel        }}
+        OPTIONAL {{ ?cap ea:domain          ?domain          }}
         OPTIONAL {{ ?cap ea:strategicIntent ?strategicIntent }}
-        FILTER NOT EXISTS {{ ?app ea:realisedBy ?cap }}
+        FILTER NOT EXISTS {{ ?app ea:enablesBusinessCapability ?cap }}
         {domain_filter}
     }} LIMIT 100
     """
@@ -218,34 +219,42 @@ def run_sa_advisor(focus_domain: str = "", user_role: str = "analyst") -> SAAdvi
         ?asset data:classification ?classification .
         FILTER(?classification IN ("Restricted", "Confidential"))
         OPTIONAL {{
-            ?finding a agent:AgentFinding ;
-                     agent:affects ?app ;
-                     agent:status  ?status .
+            ?finding a nexus:AgentFinding ;
+                     nexus:affects       ?app ;
+                     nexus:findingStatus ?status .
             FILTER(?status != "Resolved")
-            OPTIONAL {{ ?finding rdfs:label     ?findingLabel }}
-            OPTIONAL {{ ?finding agent:severity ?severity     }}
+            OPTIONAL {{ ?finding rdfs:label      ?findingLabel }}
+            OPTIONAL {{ ?finding nexus:severity  ?severity     }}
         }}
         {domain_filter}
     }} LIMIT 50
     """
 
-    # ── Execute all queries ────────────────────────────────────────────────────
-    results: dict[str, list[dict]] = {}
-    for name, q in [
+    # ── Execute all queries in parallel ───────────────────────────────────────
+    named_queries = [
         ("capability", cap_q),
         ("orphans",    orphan_q),
         ("hotspots",   hotspot_q),
         ("techdebt",   techdebt_q),
         ("gaps",       gap_q),
         ("datarisk",   datarisk_q),
-    ]:
+    ]
+    results: dict[str, list[dict]] = {}
+
+    def _run_query(name: str, q: str) -> tuple[str, list[dict]]:
         try:
             _, rows = db.to_rows(db.query(q))
-            results[name] = rows
             logger.info("SA query '%s' returned %d rows", name, len(rows))
+            return name, rows
         except Exception as exc:
             logger.warning("SA Advisor query '%s' failed: %s", name, exc)
-            results[name] = []
+            return name, []
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {pool.submit(_run_query, name, q): name for name, q in named_queries}
+        for future in as_completed(futures):
+            name, rows = future.result()
+            results[name] = rows
 
     # ── Build capability coverage map ──────────────────────────────────────────
     cap_coverage: dict[str, list[str]] = {}

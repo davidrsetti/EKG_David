@@ -73,3 +73,10 @@ class Settings:
 
 # Singleton — import this everywhere
 settings = Settings()
+
+# Fail fast in production if secrets are still at their insecure defaults
+if settings.is_production and settings.security.jwt_secret == "change-me-in-prod":
+    raise RuntimeError(
+        "JWT_SECRET must be set to a strong secret value in production. "
+        "Do not use the default 'change-me-in-prod' value."
+    )

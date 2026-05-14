@@ -10,7 +10,8 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-BASE = "http://nexus.enterprise.com/"
+_NEXUS_BASE = "https://nexus.platform/ops#"
+_AGENT_BASE  = "https://nexus.platform/ops#"
 
 
 @dataclass
@@ -26,6 +27,9 @@ class Finding:
     def __post_init__(self):
         if not self.finding_id:
             self.finding_id = f"finding_{uuid.uuid4().hex[:12]}"
+        valid_severities = {"Low", "Medium", "High", "Critical"}
+        if self.severity not in valid_severities:
+            raise ValueError(f"severity must be one of {valid_severities}, got '{self.severity}'")
 
 
 def assert_finding(finding: Finding) -> str:
@@ -37,23 +41,23 @@ def assert_finding(finding: Finding) -> str:
     db = get_stardog()
 
     now       = datetime.now(timezone.utc).isoformat()
-    uri       = f"{BASE}agent#{finding.finding_id}"
-    agent_uri = f"{BASE}agent#{finding.agent_id.replace(' ', '_')}"
+    uri       = f"{_NEXUS_BASE}{finding.finding_id}"
+    agent_uri = f"{_AGENT_BASE}{finding.agent_id.replace(' ', '_')}"
 
     sparql_update = f"""
-PREFIX agent: <{BASE}agent#>
+PREFIX nexus: <{_NEXUS_BASE}>
 PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
 
 INSERT DATA {{
-    <{uri}> a agent:AgentFinding ;
-        rdfs:label      "{_esc(finding.label)}" ;
-        agent:foundBy   <{agent_uri}> ;
-        agent:foundAt   "{now}"^^xsd:dateTime ;
-        agent:affects   <{finding.asset_uri}> ;
-        agent:severity  "{finding.severity}" ;
-        agent:status    "{finding.status}" ;
-        agent:description "{_esc(finding.description)}" .
+    <{uri}> a nexus:AgentFinding ;
+        rdfs:label          "{_esc(finding.label)}" ;
+        nexus:foundBy       <{agent_uri}> ;
+        nexus:foundAt       "{now}"^^xsd:dateTime ;
+        nexus:affects       <{finding.asset_uri}> ;
+        nexus:severity      "{finding.severity}" ;
+        nexus:findingStatus "{finding.status}" ;
+        nexus:description   "{_esc(finding.description)}" .
 }}
 """
     try:
@@ -71,19 +75,19 @@ def update_finding_status(finding_uri: str, new_status: str, reviewer_uri: str =
     db = get_stardog()
 
     reviewer_triple = (
-        f'<{finding_uri}> agent:reviewedBy <{reviewer_uri}> .'
+        f'<{finding_uri}> nexus:reviewedBy <{reviewer_uri}> .'
         if reviewer_uri else ""
     )
 
     sparql_update = f"""
-PREFIX agent: <{BASE}agent#>
+PREFIX nexus: <{_NEXUS_BASE}>
 
-DELETE {{ <{finding_uri}> agent:status ?oldStatus }}
+DELETE {{ <{finding_uri}> nexus:findingStatus ?oldStatus }}
 INSERT {{
-    <{finding_uri}> agent:status "{new_status}" .
+    <{finding_uri}> nexus:findingStatus "{new_status}" .
     {reviewer_triple}
 }}
-WHERE {{ <{finding_uri}> agent:status ?oldStatus }}
+WHERE {{ <{finding_uri}> nexus:findingStatus ?oldStatus }}
 """
     try:
         db.update(sparql_update)
