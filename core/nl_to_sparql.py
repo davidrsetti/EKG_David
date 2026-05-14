@@ -116,6 +116,22 @@ AVAILABLE PREFIX DECLARATIONS:
 
 {vg_hint}{clarification_block}{role_hint}{extra_filter_hint}
 
+DOMAIN KNOWLEDGE — key concept mappings (use these instead of inventing patterns):
+- "EA Standards" / "technology standards" / "approved technologies" = instances of ea:Technology.
+  ea:Technology links to its capability category via ea:enablesTechnologyCapabilityL3 → ea:TechnologyCapabilityL3.
+  Example: "EA Standards for Database" →
+    SELECT ?techLabel ?capLabel WHERE {{
+      ?tech a ea:Technology ; rdfs:label ?techLabel ;
+            ea:enablesTechnologyCapabilityL3 ?cap .
+      ?cap rdfs:label ?capLabel .
+      FILTER(CONTAINS(LCASE(?capLabel), "database"))
+    }} ORDER BY ?techLabel LIMIT 100
+- "Applications" = ea:Application; link to capabilities via ea:enablesBusinessCapabilityL3.
+- "People" / "employees" = hr:User; linked to departments via hr:belongsToDepartment.
+- "Business capabilities" = ea:BusinessCapabilityL3 (L1/L2 for higher levels).
+- "CSO / security capabilities" = ea:CSOCapabilityL3 (L1/L2 for higher levels).
+- NEVER search on rdfs:label alone to find typed entities — always assert the rdf:type first.
+
 RULES:
 1. Use rdfs:label for human-readable names and text filtering unless the ontology explicitly requires another predicate.
 2. Never use ea:name for user-facing filtering when rdfs:label is available.
