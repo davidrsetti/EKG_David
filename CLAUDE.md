@@ -97,12 +97,38 @@ When loading new TTL files or updating SPARQL queries, consult `sparql_correctio
 
 ## UI Structure
 
-Three Streamlit tabs:
-- **Knowledge Graph Chat** — NL query input, clarification plan display, SPARQL inspector, PII warnings, latency/complexity metrics.
-- **Guided SA Advisor** (`ui/guided_sa_tab.py`) — domain filter, health score gauge, capability gaps, tech debt, prioritised recommendations.
-- **Freeform SA Diagram** — diagram type selector (dependency, capability map, data lineage, C4 context, org ownership), DOT/Mermaid output.
+Nine Streamlit tabs (all wired in `ui/app.py`):
+
+| Tab | File | What it does |
+|-----|------|-------------|
+| 💬 Knowledge Graph Chat | `app.py` | NL query → 9-stage pipeline, SPARQL inspector, PII warnings, audit |
+| 🧭 Guided SA Advisor | `guided_sa_tab.py` | 4-step interview → graph-grounded SA recommendation |
+| 🏛 Freeform SA Diagram | `app.py` | ArchiMate 3.1 diagram generation via Claude API, draw.io export |
+| 📊 Data Query | `data_query_tab.py` | NL→SQL over Unity Catalog, BU/Domain governance panel |
+| 📊 Portfolio Intelligence | `portfolio_tab.py` | **QW-1** — APM TIME model quadrant + health score (auto-scored from graph) |
+| 🏥 SA Health | `sa_health_tab.py` | **QW-3** — 6-query architecture health: gaps, debt, orphans, hotspots |
+| 🗺️ Architecture Diagrams | `diagram_tab.py` | **QW-2** — 7 diagram types from graph (DOT/Mermaid), draw.io export |
+| 💥 Change Impact | `impact_tab.py` | **D-1** — 6-traversal blast radius: dependents, capabilities, data, agents, people |
+| 🔍 Audit | `audit_tab.py` | **QW-5** — JSONL audit log viewer, metrics, filters, export |
 
 Brand colours: GSK orange `#F36633`.
+
+## Core Modules (complete list)
+
+| File | What it does |
+|------|-------------|
+| `core/impact_analyzer.py` | Change Impact Radar — 6 parallel SPARQL traversals, GPT-4o narrative |
+| `core/apm_agent.py` | Gartner TIME model portfolio scoring (4 dimensions → 0–10 scores) |
+| `core/sa_advisor.py` | Portfolio health: 6 queries + LLM synthesis → SAAdvisorResult |
+| `core/sa_advisor_v2.py` | Guided SA advisor (ontology-driven, resolves classes at runtime) |
+| `core/artifact_creator.py` | 7 diagram types via `@diagram_type()` decorator; returns DOT/Mermaid |
+| `core/nl_to_sparql.py` | NL→SPARQL with o3-mini; fallback to gpt-4o; prefix injection |
+| `core/nl_to_sql.py` | NL→SQL with keyword blocking; BU/Domain-scoped table context |
+| `core/ontology.py` | Live ontology snapshot from Stardog (TTL-cached, thread-safe) |
+| `core/stardog_client.py` | Singleton HTTP SPARQL client; complexity estimation |
+| `core/databricks_client.py` | Singleton Databricks SQL connector |
+| `core/answer_engine.py` | GPT-4o result synthesis (Direct Answer / Reasoning / Caveats) |
+| `core/clarifier.py` | Intent mapping → ClarificationPlan (HitL pre-flight) |
 
 ## API Endpoints
 
@@ -114,7 +140,15 @@ FastAPI auto-docs at `http://localhost:8000/docs`. Key endpoints:
 | `POST /v1/sa-advisor` | Full SA Advisor report |
 | `POST /v1/apm/analyze` | Portfolio analysis (TIME model) |
 | `POST /v1/artifact/diagram` | Generate architecture diagram |
+| `POST /v1/impact/analyze` | **Change Impact Radar** — 6-ring blast radius |
 | `POST /v1/assert` | Agent writes finding to graph |
 | `POST /v1/context` | Fetch entity context bundle |
+| `GET  /v1/health/graph` | Graph health metrics (Kubernetes readiness probe) |
 
 All endpoints require a Bearer JWT (`generate_token.bat` creates one for testing).
+
+## Security Notes
+
+- `api/main.py::_safe_filter_param()` — rejects `}`, `{`, `#`, `;` in all filter params (SPARQL injection guard)
+- `ui/app.py::make_client()` — calls `invalidate_schema_cache()` on Stardog reconnect (stale ontology fix)
+- `config/settings.py` — JWT secret randomised per-process in dev if `JWT_SECRET` unset; fails fast in production
