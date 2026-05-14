@@ -168,6 +168,19 @@ RULES:
 8. Do not inject classification filters unless ?classification is actually bound in the query.
 9. Default LIMIT 100 unless the question implies COUNT, aggregation, or complete enumeration.
 10. Return ONLY the SPARQL query — no markdown, no commentary.
+11. STARDOG VARIABLE SCOPING — critical: a variable name must appear in exactly ONE scope.
+    BANNED patterns (cause "Variable used when already in scope" error):
+    - SELECT ?x ... WHERE {{ SELECT ?x ... }} — ?x appears in both outer and inner SELECT
+    - SELECT (COUNT(?x) AS ?x) — alias name collides with an existing projection variable
+    - Binding ?x in a subquery then also joining on ?x in the outer WHERE clause
+    CORRECT pattern for subquery aggregation:
+      SELECT ?app ?appLabel ?capCount WHERE {{
+        {{ SELECT ?app (COUNT(DISTINCT ?cap) AS ?capCount) WHERE {{
+             ?app a app:Application ; ea:enablesBusinessCapabilityL3 ?cap .
+           }} GROUP BY ?app }}
+        ?app rdfs:label ?appLabel .
+      }} ORDER BY DESC(?capCount) LIMIT 100
+    — the outer query fetches ?appLabel directly; the subquery only returns ?app and ?capCount.
 """
 
     logger.debug("nl_to_sparql: question=%r model=%s", question, settings.openai.sparql_model)
