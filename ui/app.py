@@ -263,6 +263,7 @@ with st.sidebar:
     st.divider()
     st.markdown('<div style="color:#777777;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem">Identity</div>', unsafe_allow_html=True)
     user_role = st.selectbox("Role", ["analyst", "data-steward", "admin", "viewer", "agent"])
+    st.session_state["user_role"] = user_role
     user_dept = st.text_input("Department", value="", placeholder="e.g. Finance")
     st.divider()
 
@@ -307,7 +308,16 @@ st.markdown(
 )
 
 # ── Main tabs ─────────────────────────────────────────────────────────
-tab_chat, tab_guided_sa, tab_sa, tab_data = st.tabs(["💬  Knowledge Graph Chat", "🧭  Guided SA Advisor", "🏛  Freeform SA Diagram", "📊  Data Query"])
+tab_chat, tab_guided_sa, tab_sa, tab_data, tab_portfolio, tab_sa_health, tab_diagram, tab_audit = st.tabs([
+    "💬  Knowledge Graph Chat",
+    "🧭  Guided SA Advisor",
+    "🏛  Freeform SA Diagram",
+    "📊  Data Query",
+    "📊  Portfolio Intelligence",
+    "🏥  SA Health",
+    "🗺️  Architecture Diagrams",
+    "🔍  Audit",
+])
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1064,3 +1074,56 @@ with tab_data:
         render_data_query_tab(stardog=_stardog, databricks=_dbx)
     except Exception as _exc:
         st.error(f"Data Query tab failed to load: {_exc}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TAB 5 — PORTFOLIO INTELLIGENCE (APM TIME model)
+# ═══════════════════════════════════════════════════════════════════════
+with tab_portfolio:
+    try:
+        from nexus.ui.portfolio_tab import render_portfolio_tab
+        render_portfolio_tab(
+            connected=st.session_state.get("connected", False),
+            user_role=st.session_state.get("user_role", "analyst"),
+        )
+    except Exception as _exc:
+        st.error(f"Portfolio Intelligence tab failed to load: {_exc}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TAB 6 — SA PORTFOLIO HEALTH
+# ═══════════════════════════════════════════════════════════════════════
+with tab_sa_health:
+    try:
+        from nexus.ui.sa_health_tab import render_sa_health_tab
+        render_sa_health_tab(
+            connected=st.session_state.get("connected", False),
+            user_role=st.session_state.get("user_role", "analyst"),
+        )
+    except Exception as _exc:
+        st.error(f"SA Health tab failed to load: {_exc}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TAB 7 — ARCHITECTURE DIAGRAM STUDIO
+# ═══════════════════════════════════════════════════════════════════════
+with tab_diagram:
+    try:
+        from nexus.ui.diagram_tab import render_diagram_tab
+        render_diagram_tab(
+            connected=st.session_state.get("connected", False),
+            user_role=st.session_state.get("user_role", "analyst"),
+        )
+    except Exception as _exc:
+        st.error(f"Architecture Diagrams tab failed to load: {_exc}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TAB 8 — AUDIT & OBSERVABILITY
+# ═══════════════════════════════════════════════════════════════════════
+with tab_audit:
+    try:
+        from nexus.ui.audit_tab import render_audit_tab
+        render_audit_tab(user_role=st.session_state.get("user_role", "analyst"))
+    except Exception as _exc:
+        st.error(f"Audit tab failed to load: {_exc}")

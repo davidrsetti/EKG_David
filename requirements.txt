@@ -16,6 +16,7 @@ pyjwt>=2.8.0
 # UI
 streamlit>=1.35.0
 pandas>=2.2.0
+plotly>=5.22.0           # Portfolio TIME quadrant chart
 
 # Audit sinks (optional)
 psycopg2-binary>=2.9.0  # for postgres audit sink
