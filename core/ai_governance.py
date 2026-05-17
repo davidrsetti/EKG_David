@@ -113,7 +113,7 @@ def run_ai_governance(user_role: str = "analyst") -> AIGovernanceResult:
         }
         OPTIONAL {
             ?finding nexus:affects ?asset .
-            ?asset a data:DataAsset .
+            ?asset a data:Dataset .
             OPTIONAL { ?asset rdfs:label ?assetLabel }
         }
         FILTER(!BOUND(?status) || ?status != "Resolved")
@@ -140,7 +140,7 @@ def run_ai_governance(user_role: str = "analyst") -> AIGovernanceResult:
 
     def _run(name: str, q: str) -> tuple[str, list[dict]]:
         try:
-            _, rows = db.to_rows(db.query(q))
+            _, rows = db.to_rows(db.query(q, inject_prefixes=True))
             logger.info("AI governance query '%s' returned %d rows", name, len(rows))
             return name, rows
         except Exception as exc:
